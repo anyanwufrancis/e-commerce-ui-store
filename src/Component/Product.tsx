@@ -17,7 +17,8 @@ type IProductWithQuantity = IProduct & {
 };
 
 const API_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+  import.meta.env.VITE_API_URL ||
+  "https://e-commerce-store-backend-0exy.onrender.com/api";
 
 const Product = () => {
   const [products, setProducts] = useState<IProduct[]>([]);

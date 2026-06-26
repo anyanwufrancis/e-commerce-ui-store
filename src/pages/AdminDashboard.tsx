@@ -15,7 +15,9 @@ interface ImportMetaEnv { VITE_API_URL?: string; }
 const env = (import.meta as unknown as { env: ImportMetaEnv }).env;
 
 const API = axios.create({
-  baseURL: env?.VITE_API_URL || "http://localhost:5000/api",
+  baseURL:
+    env?.VITE_API_URL ||
+    "https://e-commerce-store-backend-0exy.onrender.com/api",
 });
 
 const toaster = createToaster({ placement: "bottom-end", overlap: true, gap: 16 });

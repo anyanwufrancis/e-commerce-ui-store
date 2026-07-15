@@ -24,7 +24,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const { user, accounts, logout, switchAccount } = useAuth();
+  const { user, accounts, logout, switchAccount, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -75,7 +75,7 @@ export default function Navbar() {
               <Icon size="md"><Search size={18} /></Icon>
             </IconButton>
 
-            <Box position="relative">
+            {/* <Box position="relative">
               <IconButton aria-label="cart" variant="ghost" color={TEXT_MAIN}>
                 <Icon size="md"><ShoppingBag size={18} /></Icon>
               </IconButton>
@@ -83,8 +83,8 @@ export default function Navbar() {
                 bg={GOLD} color={DARK} fontSize="10px" fontWeight="bold"
                 display="flex" alignItems="center" justifyContent="center">
                 0
-              </Box>
-            </Box>
+              </Box> */}
+            {/* </Box> */}
 
             {user ? (
               <Box
@@ -180,18 +180,65 @@ export default function Navbar() {
                     ))}
                 </Stack>
               )}
+              <HStack gap={3}>
+  <IconButton aria-label="search" variant="ghost" color={TEXT_MAIN}>
+    <Icon size="md"><Search size={18} /></Icon>
+  </IconButton>
 
-              {/* Actions */}
-              <Stack gap={0} py={4}>
-                <Flex
-                  as="button" align="center" gap={3} px={6} py={4} color={TEXT_MAIN}
-                  _hover={{ bg: "rgba(255,255,255,0.05)" }} transition="background 0.15s"
-                  onClick={() => { setProfileOpen(false); navigate("/auth"); }}
-                  cursor="pointer" w="full"
-                >
-                  <UserPlus size={18} color={GOLD} />
-                  <Text fontSize="14px">Add another account</Text>
-                </Flex>
+  <Box position="relative">
+    <IconButton aria-label="cart" variant="ghost" color={TEXT_MAIN}>
+      <Icon size="md"><ShoppingBag size={18} /></Icon>
+    </IconButton>
+    <Box position="absolute" top="0" right="0" w="18px" h="18px" borderRadius="full"
+      bg={GOLD} color={DARK} fontSize="10px" fontWeight="bold"
+      display="flex" alignItems="center" justifyContent="center">
+      0
+    </Box>
+  </Box>
+
+  {isAdmin && (
+    <Link to="/AdminDashboard">
+      <Button
+        display={{ base: "none", lg: "flex" }}
+        variant="outline"
+        borderColor={GOLD}
+        color={GOLD}
+        borderRadius="0px"
+        h="40px"
+        px={5}
+        fontSize="13px"
+        _hover={{ bg: GOLD, color: DARK }}
+      >
+        Admin
+      </Button>
+    </Link>
+  )}
+
+</HStack>
+
+            {/* Actions */}
+<Stack gap={0} py={4}>
+  {isAdmin && (
+    <Flex
+      as="button" align="center" gap={3} px={6} py={4} color={GOLD}
+      _hover={{ bg: "rgba(201,169,110,0.08)" }} transition="background 0.15s"
+      onClick={() => { setProfileOpen(false); navigate("/AdminDashboard"); }}
+      cursor="pointer" w="full"
+    >
+      <ChevronRight size={18} />
+      <Text fontSize="14px">Go to Admin Dashboard</Text>
+    </Flex>
+  )}
+
+  <Flex
+    as="button" align="center" gap={3} px={6} py={4} color={TEXT_MAIN}
+    _hover={{ bg: "rgba(255,255,255,0.05)" }} transition="background 0.15s"
+    onClick={() => { setProfileOpen(false); navigate("/auth"); }}
+    cursor="pointer" w="full"
+  >
+    <UserPlus size={18} color={GOLD} />
+    <Text fontSize="14px">Add another account</Text>
+  </Flex>
 
                 <Flex
                   as="button" align="center" gap={3} px={6} py={4} color="#E24B4A"
@@ -255,12 +302,19 @@ export default function Navbar() {
                 </Stack>
               )}
 
-              <Stack mt={4} align="start" gap={6}>
-                {[["Home", "/"], ["Shop", "/product"], ["Categories", "/categories"], ["About", "/about"]].map(([label, to]) => (
-                  <Link key={to} to={to} onClick={() => setMobileOpen(false)}>
-                    <Text color={TEXT_MAIN}>{label}</Text>
-                  </Link>
-                ))}
+            <Stack mt={4} align="start" gap={6}>
+  {[["Home", "/"], ["Shop", "/product"], ["Categories", "/categories"], ["About", "/about"]].map(([label, to]) => (
+    <Link key={to} to={to} onClick={() => setMobileOpen(false)}>
+      <Text color={TEXT_MAIN}>{label}</Text>
+    </Link>
+  ))}
+
+  {isAdmin && (
+    <Link to="/AdminDashboard" onClick={() => setMobileOpen(false)}>
+      <Text color={GOLD} fontWeight="500">Admin Dashboard</Text>
+    </Link>
+  )}
+
 
                 {user ? (
                   <>

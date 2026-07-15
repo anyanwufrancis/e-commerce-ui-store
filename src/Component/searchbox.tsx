@@ -20,14 +20,14 @@ const Searchbox: React.FC<ISearchProps> = ({ products, setProducts }) => {
   }, [query]);
 
   return (
-    <main>
-
+    <main className="w-full">
       <input
-        type="text" 
-        value={query} 
+        type="text"
+        value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="search for products..."
-        className="border-2 py-1 px-1 rounded-[5px]" 
+        placeholder="Search for products..."
+        aria-label="Search for products"
+        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[#C9A96E] focus:ring-2 focus:ring-[#C9A96E]/25 sm:text-base"
       />
     </main>
   );

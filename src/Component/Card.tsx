@@ -22,6 +22,8 @@ const isSpecialProduct = false;
   // Set image height based on whether it's a special product
   const imageHeight = isSpecialProduct ? 140 : 180;
 
+  const fallbackImage = "https://via.placeholder.com/400?text=No+Image";
+
   // Set the exchange rate for NGN (Nigerian Naira) to USD
   const exchangeRateNGN = 1473; // 1 USD = 1,473 NGN
 
@@ -48,11 +50,17 @@ const isSpecialProduct = false;
       >
         {/* Background image container styled with inline styles */}
 <img
-  src={image}
+  src={image || fallbackImage}
   alt={name}
   className="w-full rounded-md mb-2 object-cover"
   style={{ height: imageHeight }}
-  onError={() => console.log("Image failed:", image)}
+  onError={(event) => {
+    const target = event.currentTarget;
+    if (target.src !== fallbackImage) {
+      target.onerror = null;
+      target.src = fallbackImage;
+    }
+  }}
 />
 
         {/* Product details section */}

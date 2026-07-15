@@ -21,29 +21,34 @@ interface AuthContextType {
   isLoading:  boolean;
   isLoggedIn: boolean;
   isAdmin:    boolean;
-  accounts:   SavedAccount[];        // all saved accounts, including active one
+  accounts:   SavedAccount[];
   login:      (token: string, user: User) => void;
-  logout:     () => void;            // logs out current account only, switches to next saved one if any
-  logoutAll:  () => void;            // clears everything
+  logout:     () => Promise<void>;
+  logoutAll:  () => Promise<void>;
   switchAccount: (userId: string) => void;
   updateUser: (user: User) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const ACCOUNTS_KEY = "saved_accounts"; // array of { user, token }
+const ACCOUNTS_KEY  = "saved_accounts";
 const ACTIVE_ID_KEY = "active_user_id";
-
-// legacy single-session keys, migrated on load
 const AUTH_TOKEN_KEY = "auth_token";
 const AUTH_USER_KEY  = "auth_user";
 
+const API_BASE =
+  import.meta.env.VITE_API_URL ||
+  "https://e-commerce-store-backend-0exy.onrender.com/api";
+
 function isValidUser(value: unknown): value is User {
-  return typeof value === "object" && value !== null
-    && typeof (value as any)._id === "string"
-    && typeof (value as any).name === "string"
-    && typeof (value as any).email === "string"
-    && typeof (value as any).role === "string";
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as any)._id === "string" &&
+    typeof (value as any).name === "string" &&
+    typeof (value as any).email === "string" &&
+    typeof (value as any).role === "string"
+  );
 }
 
 function readAccounts(): SavedAccount[] {
@@ -51,7 +56,9 @@ function readAccounts(): SavedAccount[] {
     const raw = localStorage.getItem(ACCOUNTS_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter((a) => isValidUser(a?.user) && typeof a?.token === "string");
+    return parsed.filter(
+      (a) => isValidUser(a?.user) && typeof a?.token === "string"
+    );
   } catch {
     return [];
   }
@@ -61,22 +68,37 @@ function writeAccounts(accounts: SavedAccount[]) {
   localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
 }
 
+// ── Calls the backend to mark a user offline ──────────────────────────────────
+async function serverLogout(token: string) {
+  try {
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (err) {
+    console.error("Logout API call failed:", err);
+    // proceed with local logout regardless
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [accounts, setAccounts] = useState<SavedAccount[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // On mount: load saved accounts, migrate legacy single-session keys if present
+  // ── On mount: load saved accounts, migrate legacy keys ────────────────────
   useEffect(() => {
     let loaded = readAccounts();
 
-    // Migrate old single-session storage into the accounts list
-    const legacyToken = localStorage.getItem(AUTH_TOKEN_KEY);
+    const legacyToken   = localStorage.getItem(AUTH_TOKEN_KEY);
     const legacyUserRaw = localStorage.getItem(AUTH_USER_KEY);
     if (legacyToken && legacyUserRaw) {
       try {
         const legacyUser = JSON.parse(legacyUserRaw);
-        if (isValidUser(legacyUser) && !loaded.some((a) => a.user._id === legacyUser._id)) {
+        if (
+          isValidUser(legacyUser) &&
+          !loaded.some((a) => a.user._id === legacyUser._id)
+        ) {
           loaded = [...loaded, { user: legacyUser, token: legacyToken }];
           writeAccounts(loaded);
         }
@@ -87,8 +109,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setAccounts(loaded);
 
-    const savedActiveId = localStorage.getItem(ACTIVE_ID_KEY);
-    const activeStillExists = loaded.some((a) => a.user._id === savedActiveId);
+    const savedActiveId      = localStorage.getItem(ACTIVE_ID_KEY);
+    const activeStillExists  = loaded.some((a) => a.user._id === savedActiveId);
+
     if (savedActiveId && activeStillExists) {
       setActiveId(savedActiveId);
     } else if (loaded.length > 0) {
@@ -101,8 +124,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const active = accounts.find((a) => a.user._id === activeId) ?? null;
 
+  // ── Heartbeat: ping the server every 30s while a user is active ──────────
+  // The admin dashboard derives online/offline from `lastSeen`, so this keeps
+  // the active user "online". When the tab closes without a logout click,
+  // the pings stop and the user ages out as offline after ~60s.
+  useEffect(() => {
+    if (!active) return;
+
+    let failureCount = 0;
+
+    const sendHeartbeat = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/auth/heartbeat`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${active.token}` },
+        });
+
+        if (!res.ok) {
+          failureCount += 1;
+          if (failureCount <= 3) {
+            const body = await res.text().catch(() => "<unreadable>");
+            console.error(`Heartbeat failed: ${res.status} ${res.statusText}`, body);
+          }
+          return;
+        }
+
+        failureCount = 0;
+      } catch (err) {
+        failureCount += 1;
+        if (failureCount <= 3) {
+          console.error("Heartbeat failed:", err);
+        }
+      }
+    };
+
+    sendHeartbeat(); // fire immediately on login / account switch
+    const interval = setInterval(sendHeartbeat, 30_000);
+    return () => clearInterval(interval);
+  }, [active]);
+
+  // ── Listen for session-expired events from API interceptor ────────────────
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      if (!active) return;
+      console.warn("Session expired — logging out");
+      // Use the logout function but we need to call it asynchronously
+      logout();
+    };
+
+    window.addEventListener("auth:session-expired", handleSessionExpired);
+    return () => window.removeEventListener("auth:session-expired", handleSessionExpired);
+  }, [active]);
+
+  // ── Auth actions ──────────────────────────────────────────────────────────
   function login(newToken: string, newUser: User) {
-    const next = accounts.filter((a) => a.user._id !== newUser._id);
+    const next    = accounts.filter((a) => a.user._id !== newUser._id);
     const updated = [...next, { user: newUser, token: newToken }];
     writeAccounts(updated);
     setAccounts(updated);
@@ -117,12 +193,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(ACTIVE_ID_KEY, userId);
   }
 
-  // Logs out only the active account; switches to another saved one if available
-  function logout() {
+  // Logs out only the active account; switches to next saved one if available
+  async function logout() {
     if (!activeId) return;
+
+    const account = accounts.find((a) => a.user._id === activeId);
+    if (account) await serverLogout(account.token);
+
     const next = accounts.filter((a) => a.user._id !== activeId);
     writeAccounts(next);
     setAccounts(next);
+
     if (next.length > 0) {
       setActiveId(next[0].user._id);
       localStorage.setItem(ACTIVE_ID_KEY, next[0].user._id);
@@ -133,7 +214,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   // Clears every saved account
-  function logoutAll() {
+  async function logoutAll() {
+    // Tell the server the active user is offline
+    if (active) await serverLogout(active.token);
+
     setAccounts([]);
     setActiveId(null);
     localStorage.removeItem(ACCOUNTS_KEY);
@@ -141,25 +225,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   function updateUser(updated: User) {
-    const next = accounts.map((a) => (a.user._id === updated._id ? { ...a, user: updated } : a));
+    const next = accounts.map((a) =>
+      a.user._id === updated._id ? { ...a, user: updated } : a
+    );
     writeAccounts(next);
     setAccounts(next);
   }
 
   return (
-    <AuthContext.Provider value={{
-      user:       active?.user ?? null,
-      token:      active?.token ?? null,
-      isLoading,
-      isLoggedIn: !!active,
-      isAdmin:    active?.user?.role === "admin",
-      accounts,
-      login,
-      logout,
-      logoutAll,
-      switchAccount,
-      updateUser,
-    }}>
+    <AuthContext.Provider
+      value={{
+        user:       active?.user ?? null,
+        token:      active?.token ?? null,
+        isLoading,
+        isLoggedIn: !!active,
+        isAdmin:    active?.user?.role === "admin",
+        accounts,
+        login,
+        logout,
+        logoutAll,
+        switchAccount,
+        updateUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

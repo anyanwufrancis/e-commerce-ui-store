@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import API from "@/services/api";
 import {
   Box, Button, Container, Flex, Grid, 
   Heading, HStack, VStack, Text, Image,
-  Input, Icon,
+  Input,
 } from "@chakra-ui/react";
 import { keyframes } from "@emotion/react";
 import { Link } from "react-router-dom";
@@ -20,7 +20,6 @@ const SURFACE    = "#16161A";
 const TEXT_MAIN  = "#F0EDE6";
 const TEXT_MUTED = "rgba(232,230,224,0.55)";
 const TEXT_DIM   = "rgba(232,230,224,0.35)";
-
 // ─── Keyframe Animations ─────────────────────────────────────────────────────
 const fadeUp = keyframes`
   from { opacity: 0; transform: translateY(32px); }
@@ -179,10 +178,10 @@ function SectionHeading({ children, italic }: SectionHeadingProps) {
 function StarRating() {
   return (
     <HStack gap={1} mb={5}>
-      {[1,2,3,4,5].map(i => (
-        <Icon key={i} w="14px" h="14px" viewBox="0 0 24 24" fill={GOLD}>
-          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-        </Icon>
+      {[1,2,3,4,5].map((i) => (
+        <svg key={i} width="14" height="14" viewBox="0 0 24 24" fill={GOLD} xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+        </svg>
       ))}
     </HStack>
   );
@@ -190,9 +189,9 @@ function StarRating() {
 
 function Arrow() {
   return (
-    <Icon w="14px" h="14px" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.5">
-      <path d="M5 12h14M12 5l7 7-7 7"/>
-    </Icon>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.5" xmlns="http://www.w3.org/2000/svg">
+      <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
@@ -238,7 +237,7 @@ export default function HomePage() {
   useEffect(() => {
     const fetchTrending = async () => {
       try {
-        const res = await axios.get<{ products: TrendingProduct[] }>("http://localhost:5000/api/products/trending");
+        const res = await API.get<{ products: TrendingProduct[] }>("/products/trending");
         setTrendingProducts(res.data.products);
       } catch (err) {
         console.log(err);
@@ -327,6 +326,12 @@ export default function HomePage() {
       <Button {...btnPrimary}>Shop Now</Button>
     </Link>
   )}
+
+  {/* {isAdmin && (
+    <Link to="/AdminDashboard">
+      <Button {...btnPrimary}>Admin Dashboard</Button>
+    </Link>
+  )} */}
 
   <Button {...btnOutline}>Explore All</Button>
 </HStack>
@@ -668,9 +673,9 @@ export default function HomePage() {
                 transition="border-color 0.3s"
                 _hover={{ borderColor: "rgba(201,169,110,0.3)" }}
               >
-                <Icon w="32px" h="32px" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1" xmlns="http://www.w3.org/2000/svg">
                   <path d={b.path} strokeLinecap="round" strokeLinejoin="round" />
-                </Icon>
+                </svg>
                 <Text fontSize="11px" letterSpacing="0.15em" textTransform="uppercase" color={TEXT_MAIN}>{b.label}</Text>
                 <Text fontSize="13px" color="rgba(232,230,224,0.4)" lineHeight={1.6}>{b.sub}</Text>
               </VStack>

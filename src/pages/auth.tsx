@@ -1,14 +1,17 @@
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
-  Box, Button, chakra, Flex, Heading, HStack,
+  Box, Button, Flex, Heading, HStack,
   Text, VStack, Image,
 } from "@chakra-ui/react";
+import axios from "axios";
 import { useAuth } from "../Component/context/AuthContext";
-
+import { GoogleLogin } from "@react-oauth/google";
 // ─── Config ───────────────────────────────────────────────────────────────────
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
-
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
+const GOOGLE_AUTH_ENABLED = Boolean(GOOGLE_CLIENT_ID);
+const DEV_MODE = import.meta.env.DEV ?? false;
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const GOLD       = "#C9A96E";
 const GOLD_LIGHT = "#E8D5A3";
@@ -21,14 +24,27 @@ const OK_COLOR   = "#6EC99A";
 
 // ─── API call ─────────────────────────────────────────────────────────────────
 async function apiPost(path: string, body: object) {
-  const res  = await fetch(`${API_BASE}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Something went wrong");
-  return data;
+  const url = `${API_BASE}${path}`;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    const text = await res.text();
+    const data = text ? JSON.parse(text) : {};
+    if (!res.ok) throw new Error(data?.message || `Request failed with status ${res.status}`);
+    return data;
+  } catch (err: any) {
+    if (err instanceof SyntaxError) {
+      throw new Error(`Invalid JSON response from ${url}`);
+    }
+    if (err instanceof Error && err.message.includes("Failed to fetch")) {
+      throw new Error(`Unable to reach backend at ${API_BASE}. Is the backend running?`);
+    }
+    throw err;
+  }
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -115,6 +131,131 @@ const GlobalStyles = () => (
   `}</style>
 );
 
+// ─── Forgot Password Modal ─────────────────────────────────────────────────
+function ForgotPasswordModal({ onClose }: { onClose: () => void }) {
+  const [email, setEmail]     = useState("");
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent]       = useState(false);
+  const [error, setError]     = useState("");
+  const [devToken, setDevToken] = useState("");
+
+  async function handleSubmit() {
+    setError("");
+    setDevToken("");
+    if (!email || !/\S+@\S+\.\S+/.test(email)) {
+      setError("Enter a valid email address.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const data = await apiPost("/auth/forgot-password", { email });
+      setDevToken(data?.devToken || "");
+      setSent(true);
+    } catch (err: any) {
+      setError(err.message || "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Box
+      position="fixed" inset={0} zIndex={1000}
+      bg="rgba(0,0,0,0.7)"
+      display="flex" alignItems="center" justifyContent="center"
+      px={4}
+      onClick={onClose}
+    >
+      <Box
+        bg={DARK2} border="1px solid rgba(201,169,110,0.2)"
+        maxW="420px" w="100%" p={8}
+        onClick={(e: MouseEvent<HTMLDivElement>) => e.stopPropagation()}
+        className="anim-fade"
+      >
+        {!sent ? (
+          <>
+            <Text fontSize="10px" letterSpacing="0.25em" textTransform="uppercase" color={GOLD} mb={2}>
+              Reset Password
+            </Text>
+            <Heading className="serif" fontSize="26px" fontWeight={300} color={TEXT_MAIN} mb={2}>
+              Forgot your <Box as="em" color={GOLD}>password?</Box>
+            </Heading>
+            <Text fontSize="13px" color={TEXT_MUTED} mb={6}>
+              Enter your email and we'll send a reset link to your inbox.
+            </Text>
+
+            {error && <AlertBanner msg={error} type="error" />}
+
+            <Box mb={5}>
+              <FieldLabel>Email Address</FieldLabel>
+              <input
+                className="field-input"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleSubmit()}
+                autoFocus
+              />
+            </Box>
+
+            <HStack gap={3}>
+              <Button
+                flex={1} h="46px" borderRadius="0" bg={GOLD} color={DARK}
+                fontSize="12px" fontWeight={500} letterSpacing="0.12em" textTransform="uppercase"
+                _hover={{ bg: GOLD_LIGHT }}
+                disabled={loading}
+                onClick={() => { void handleSubmit(); }}
+              >
+                {loading ? <span className="spinner-ring" /> : "Send Reset Link"}
+              </Button>
+              <Button
+                h="46px" borderRadius="0" bg="transparent" color={TEXT_MUTED}
+                border="1px solid rgba(201,169,110,0.2)"
+                fontSize="12px" letterSpacing="0.1em" textTransform="uppercase"
+                _hover={{ borderColor: GOLD, color: TEXT_MAIN }}
+                onClick={onClose}
+              >
+                Cancel
+              </Button>
+            </HStack>
+          </>
+        ) : (
+          <>
+            <Text fontSize="10px" letterSpacing="0.25em" textTransform="uppercase" color={OK_COLOR} mb={2}>
+              Check Your Inbox
+            </Text>
+            <Heading className="serif" fontSize="24px" fontWeight={300} color={TEXT_MAIN} mb={3}>
+              Link sent!
+            </Heading>
+            <Text fontSize="13px" color={TEXT_MUTED} mb={6} lineHeight={1.7}>
+              If <Box as="span" color={GOLD}>{email}</Box> is registered with LuxeHub, a password reset link is on its way to that inbox. It expires in 15 minutes.
+            </Text>
+            <Button
+              w="100%" h="46px" borderRadius="0" bg={GOLD} color={DARK}
+              fontSize="12px" fontWeight={500} letterSpacing="0.12em" textTransform="uppercase"
+              _hover={{ bg: GOLD_LIGHT }}
+              onClick={onClose}
+            >
+              Got it
+            </Button>
+            {DEV_MODE && devToken && (
+              <Box mt={4} p={4} bg="rgba(110,201,154,0.08)" border="1px solid rgba(110,201,154,0.2)">
+                <Text fontSize="12px" color={OK_COLOR} mb={2} fontWeight={500}>
+                  Dev reset link (copy if no email arrives):
+                </Text>
+                <Text fontSize="12px" color={TEXT_MAIN} wordBreak="break-all">
+                  {`${window.location.origin.replace(/\/$/, "")}/reset-password/${devToken}`}
+                </Text>
+              </Box>
+            )}
+          </>
+        )}
+      </Box>
+    </Box>
+  );
+}
+
 // ─── Small UI helpers ─────────────────────────────────────────────────────────
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -147,17 +288,6 @@ function GoldDivider() {
     </HStack>
   );
 }
-function GoogleIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24">
-      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-    </svg>
-  );
-}
-
 // ─── Password strength ────────────────────────────────────────────────────────
 function StrengthBar({ password }: { password: string }) {
   if (!password) return null;
@@ -195,6 +325,23 @@ function LoginForm({ onSwitch }: { onSwitch: () => void }) {
   const [errors,   setErrors]   = useState<FormErrors>({});
   const [alert,    setAlert]    = useState({ msg: "", type: "error" as "error" | "success" });
   const [loading,  setLoading]  = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+
+  async function handleLogin() {
+    setAlert({ msg: "", type: "error" });
+    if (!validate()) return;
+    setLoading(true);
+    try {
+      const data = await apiPost("/auth/login", { email, password });
+      login(data.token, data.user);
+      setAlert({ msg: "Login successful! Redirecting...", type: "success" });
+      setTimeout(() => navigate(redirectTo, { replace: true }), 1000);
+    } catch (err: any) {
+      setAlert({ msg: err.message || "Login failed", type: "error" });
+    } finally {
+      setLoading(false);
+    }
+  }
 
   function validate() {
     const e: FormErrors = {};
@@ -204,33 +351,67 @@ function LoginForm({ onSwitch }: { onSwitch: () => void }) {
     return !Object.keys(e).length;
   }
 
-  async function handleLogin() {
+  async function handleGoogleLogin(credentialResponse: any) {
     setAlert({ msg: "", type: "error" });
-    if (!validate()) return;
     setLoading(true);
     try {
-      const data = await apiPost("/auth/login", { email, password });
-      login(data.token, data.user);                    // ← saves to context + localStorage
-      setAlert({ msg: "Login successful! Redirecting home…", type: "success" });
+      const response = await axios.post(
+        `${API_BASE}/auth/google`,
+        {
+          token: credentialResponse.credential,
+        }
+      );
+
+      login(response.data.token, response.data.user);
+      setAlert({ msg: "Login successful! Redirecting...", type: "success" });
       setTimeout(() => navigate(redirectTo, { replace: true }), 1000);
     } catch (err: any) {
-      setAlert({ msg: err.message, type: "error" });
+      const message =
+        err?.response?.data?.message ||
+        err?.response?.data ||
+        err.message ||
+        "Google login failed";
+      setAlert({ msg: message, type: "error" });
+      console.error("Google login error:", err);
     } finally {
       setLoading(false);
     }
   }
 
+  function renderGoogleButton() {
+    if (GOOGLE_AUTH_ENABLED) {
+      return (
+        <GoogleLogin
+          onSuccess={handleGoogleLogin}
+          onError={() => setAlert({ msg: "Google sign in failed", type: "error" })}
+          useOneTap={false}
+          context="signin"
+          text="signin_with"
+          shape="rectangular"
+          size="large"
+        />
+      );
+    }
+
+    return null;
+  }
+
   return (
     <VStack gap={0} align="stretch">
       <HStack gap={2} mb={0}>
-        <button className="social-btn"><GoogleIcon /><span>Google</span></button>
-        <button className="social-btn">
+        {renderGoogleButton()}
+
+        <button className="social-btn" type="button">
           <svg width="16" height="16" viewBox="0 0 24 24" fill={TEXT_MUTED}>
             <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
           </svg>
           <span>Facebook</span>
         </button>
       </HStack>
+
+      {showForgotPassword && (
+        <ForgotPasswordModal onClose={() => setShowForgotPassword(false)} />
+      )}
 
       <GoldDivider />
       <AlertBanner msg={alert.msg} type={alert.type} />
@@ -250,8 +431,14 @@ function LoginForm({ onSwitch }: { onSwitch: () => void }) {
       <Box mb={2} className="anim-fade d3">
         <Flex justify="space-between" align="center" mb={2}>
           <FieldLabel>Password</FieldLabel>
-          <Text fontSize="11px" color={GOLD} cursor="pointer" letterSpacing="0.05em"
-            _hover={{ color: GOLD_LIGHT }} transition="color 0.2s"
+          <Text
+            fontSize="11px"
+            color={GOLD}
+            cursor="pointer"
+            letterSpacing="0.05em"
+            _hover={{ color: GOLD_LIGHT }}
+            transition="color 0.2s"
+            onClick={() => setShowForgotPassword(true)}
           >Forgot password?</Text>
         </Flex>
         <input className={`field-input${errors.password ? " has-error" : ""}`}
@@ -270,11 +457,13 @@ function LoginForm({ onSwitch }: { onSwitch: () => void }) {
         </Box>
       </HStack>
 
-      <Button w="100%" h="50px" rounded="none" bg={GOLD} color={DARK} className="anim-fade d5"
+      <Button w="100%" h="50px" borderRadius="0" bg={GOLD} color={DARK} className="anim-fade d5"
         fontFamily="'DM Sans',sans-serif" fontSize="12px" fontWeight={500}
         letterSpacing="0.15em" textTransform="uppercase"
-        _hover={{ bg: GOLD_LIGHT, transform: "translateY(-2px)" }} transition="all 0.3s" mb={6}
-        disabled={loading} onClick={handleLogin}
+        _hover={{ bg: GOLD_LIGHT }}
+        transition="all 0.3s" mb={6}
+        disabled={loading} onClick={() => { void handleLogin(); }}
+        css={{ '&:hover': { transform: 'translateY(-2px)' } }}
       >
         {loading ? <span className="spinner-ring" /> : "Sign In to LuxeHub"}
       </Button>
@@ -405,12 +594,14 @@ function SignupForm({ onSwitch }: { onSwitch: () => void }) {
       {/* Terms checkbox */}
       <Box mb={errors.terms ? 3 : 7} className="anim-fade d5">
         <HStack align="flex-start" gap={3}>
-          <Box as="button"
-            w="16px" h="16px" flexShrink={0} mt="2px"
-            border={`1px solid ${errors.terms ? ERR_COLOR : "rgba(201,169,110,0.3)"}`}
-            bg={terms ? GOLD : "transparent"}
-            cursor="pointer" transition="all 0.2s"
-            display="flex" alignItems="center" justifyContent="center"
+          <button type="button"
+            style={{
+              width: "16px", height: "16px", flexShrink: 0, marginTop: "2px",
+              border: `1px solid ${errors.terms ? ERR_COLOR : "rgba(201,169,110,0.3)"}`,
+              backgroundColor: terms ? GOLD : "transparent",
+              cursor: "pointer", transition: "all 0.2s",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
             onClick={() => { setTerms(p => !p); clr("terms"); }}
           >
             {terms && (
@@ -418,7 +609,7 @@ function SignupForm({ onSwitch }: { onSwitch: () => void }) {
                 <path d="M2 6l3 3 5-5" stroke={DARK} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             )}
-          </Box>
+          </button>
           <Text fontSize="12px" color={TEXT_MUTED} fontFamily="'DM Sans',sans-serif" lineHeight={1.6}>
             I agree to the{" "}
             <Box as="span" color={GOLD} cursor="pointer">Terms of Service</Box>{" "}and{" "}
@@ -428,11 +619,13 @@ function SignupForm({ onSwitch }: { onSwitch: () => void }) {
         <FieldError msg={errors.terms} />
       </Box>
 
-      <Button w="100%" h="50px" rounded="none" bg={GOLD} color={DARK} className="anim-fade d5"
+      <Button w="100%" h="50px" borderRadius="0" bg={GOLD} color={DARK} className="anim-fade d5"
         fontFamily="'DM Sans',sans-serif" fontSize="12px" fontWeight={500}
         letterSpacing="0.15em" textTransform="uppercase"
-        _hover={{ bg: GOLD_LIGHT, transform: "translateY(-2px)" }} transition="all 0.3s" mb={6}
-        disabled={loading} onClick={handleRegister}
+        _hover={{ bg: GOLD_LIGHT }}
+        transition="all 0.3s" mb={6}
+        disabled={loading} onClick={() => { void handleRegister(); }}
+        css={{ '&:hover': { transform: 'translateY(-2px)' } }}
       >
         {loading ? <span className="spinner-ring" /> : "Create My Account"}
       </Button>
@@ -451,12 +644,17 @@ function SignupForm({ onSwitch }: { onSwitch: () => void }) {
 function LeftPanel() {
   return (
     <Box position="relative" overflowY="auto" overflowX="hidden" h="100%">
-      <Image src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1000&q=80"
-        alt="" position="absolute" inset={0} w="100%" h="100%" objectFit="cover" filter="brightness(0.35)"
-      />
+      <Box
+        position="absolute" inset={0} w="100%" h="100%"
+        css={{ filter: "brightness(0.35)" }}
+      >
+        <Image src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1000&q=80"
+          alt="" w="100%" h="100%" objectFit="cover"
+        />
+      </Box>
       <Box position="absolute" inset={0} bg="linear-gradient(135deg,rgba(10,10,11,0.95) 0%,rgba(10,10,11,0.6) 100%)" />
-      <Box position="absolute" inset={0} bg={`linear-gradient(to right,transparent 60%,${DARK} 100%)`} />
-      <Box position="absolute" top={0} left="60px" w="1px" h="60px" bg={`linear-gradient(to bottom,${GOLD},transparent)`} />
+      <Box position="absolute" inset={0} bg="linear-gradient(to right,transparent 60%,rgba(10,10,11,1) 100%)" />
+      <Box position="absolute" top={0} left="60px" w="1px" h="60px" bg="linear-gradient(to bottom,#C9A96E,transparent)" />
 
       <VStack position="relative" zIndex={2} minH="100vh" align="flex-start" justify="center" px={12} py={8} gap={0}>
         <Box mb={8} className="anim-fade d1">
@@ -543,7 +741,7 @@ export default function AuthPage() {
       <Flex flex={{ base:1, lg:"0 0 520px" }} direction="column" bg={DARK2}
         borderLeft="1px solid rgba(201,169,110,0.1)" overflowY="auto"
       >
-        <Box h="3px" bgGradient={`linear(to-r,transparent,${GOLD},transparent)`} />
+        <Box h="3px" bgGradient="to-r,transparent,#C9A96E,transparent" />
 
         <Flex direction="column" justify="center" flex={1} px={{ base:8, md:14 }} py={16}>
           <Box display={{ base:"block", lg:"none" }} mb={10}>
@@ -584,9 +782,9 @@ export default function AuthPage() {
               { icon:"M5 12h14M12 5l7 7-7 7", label:"Fast Delivery" },
             ].map(b => (
               <VStack key={b.label} gap={1}>
-                <chakra.svg w="18px" h="18px" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.5)" strokeWidth="1.5">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.5)" strokeWidth="1.5">
                   <path d={b.icon} strokeLinecap="round" strokeLinejoin="round" />
-                </chakra.svg>
+                </svg>
                 <Text fontSize="10px" letterSpacing="0.12em" textTransform="uppercase" color={TEXT_MUTED}>{b.label}</Text>
               </VStack>
             ))}

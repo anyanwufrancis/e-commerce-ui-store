@@ -3,9 +3,11 @@ import { IProduct } from "@/interface/iproducts";
 import Card from "@/Component/Card";
 import Cart from "./Cart";
 import Searchbox from "@/Component/searchbox";
+import Navbar from "@/Component/nav";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import { FaShoppingCart } from "react-icons/fa";
+// import { ArrowLeft } from "lucide-react";
 
 import {
   Box,
@@ -97,69 +99,81 @@ const Product = () => {
   };
 
   return (
-    <main className="px-4 md:px-8 lg:px-10 max-w-[1400px] mx-auto min-h-screen bg-gradient-to-b from-slate-100 to-slate-200">
+    <main className="min-h-screen bg-slate-50 text-slate-900">
+      <Navbar />
+
       {!isOnline && (
-        <div className="fixed top-0 left-0 w-full bg-red-600 text-white text-center py-2 z-50">
+        <div className="fixed top-20 left-0 w-full bg-red-600 text-white text-center py-2 z-[1000] px-4 text-sm sm:text-base">
           ⚠️ No internet connection. Please check your network.
         </div>
       )}
 
       {showOnlineMessage && (
-        <div className="fixed top-0 left-0 w-full bg-green-600 text-white text-center py-2 z-50">
+        <div className="fixed top-20 left-0 w-full bg-green-600 text-white text-center py-2 z-[1000] px-4 text-sm sm:text-base">
           ✅ Internet connection restored. You're back online!
         </div>
       )}
 
-      {/* Header */}
-      <div className="mt-8 mb-6">
-        <div className="hidden md:grid grid-cols-3 items-center gap-4">
-          <div className="flex items-center gap-3 justify-start">
-            <img
-              src="cart image.jpg"
-              alt="Cart"
-              className="w-8 h-8"
-            />
-            <span className="text-sm font-medium">
-              Cart Items: {cartItems.length}
-            </span>
-          </div>
+      <section className="relative overflow-hidden bg-[#0A0A0B] px-4 pb-8 pt-28 text-white sm:px-6 md:px-8 md:pb-10 lg:px-10 lg:pt-32">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(201,169,110,0.24),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.08),transparent_38%)]" />
+        <div className="relative mx-auto flex max-w-[1400px] flex-col gap-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div className="max-w-2xl">
+              {/* <Button
+                onClick={() => navigate(-1)}
+                variant="outline"
+                borderRadius="9999px"
+                borderColor="rgba(201,169,110,0.55)"
+                color="#F0EDE6"
+                bg="rgba(255,255,255,0.06)"
+                px="16px"
+                h="40px"
+                mb="18px"
+                _hover={{ bg: "rgba(201,169,110,0.16)", borderColor: "#C9A96E" }}
+              >
+                <ArrowLeft size={16} color="currentColor" />
+                Back
+              </Button> */}
 
-          <div className="flex justify-center">
-            <div className="w-full max-w-md">
-              <Searchbox
-                products={products}
-                setProducts={setfilterProducts}
-              />
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.35em] text-[#C9A96E] sm:text-sm">
+                LuxeHub Store
+              </p>
+              <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-5xl">
+                Shop the collection
+              </h1>
+              <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300 sm:text-base">
+                Find the latest products, search by name, and add your favorites to cart.
+              </p>
             </div>
+
+            {/* <div className="rounded-2xl border border-[#C9A96E]/25 bg-white/10 px-4 py-3 text-sm shadow-2xl shadow-black/20 backdrop-blur md:min-w-[180px]"> */}
+              {/* <div className="flex items-center gap-3"> */}
+                {/* <img
+                  src="cart image.jpg"
+                  alt="Cart"
+                  className="h-9 w-9 rounded-full bg-white/90 p-1"
+                />
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-300">
+                    Cart Items
+                  </p>
+                  <p className="text-lg font-semibold text-white">
+                    {cartItems.length} {cartItems.length === 1 ? "item" : "items"}
+                  </p>
+                </div> */}
+              {/* </div> */}
+            {/* </div> */}
           </div>
 
-          <div />
-        </div>
-
-        {/* Mobile */}
-        <div className="md:hidden flex flex-col gap-4">
-          <div className="w-full">
+          <div className="rounded-2xl border border-white/10 bg-white p-3 shadow-xl shadow-black/20 sm:p-4 md:max-w-xl">
             <Searchbox
               products={products}
               setProducts={setfilterProducts}
             />
           </div>
-
-          <div className="flex items-center gap-2">
-            <img
-              src="cart image.jpg"
-              alt="Cart"
-              className="w-7 h-7"
-            />
-
-            <span className="text-sm">
-              {cartItems.length} items
-            </span>
-          </div>
         </div>
-      </div>
+      </section>
 
-      {/* Cart Modal */}
       {ViewCart && (
         <Cart
           cartItems={cartItems}
@@ -167,34 +181,34 @@ const Product = () => {
         />
       )}
 
-      {/* Products Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {isOnline ? (
-          filteredproducts.length === 0 ? (
-            <div className="col-span-full flex justify-center items-center py-20">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500" />
-            </div>
+      <section className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6 md:px-8 lg:px-10 lg:py-10">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:gap-6 lg:grid-cols-3 xl:grid-cols-4">
+          {isOnline ? (
+            filteredproducts.length === 0 ? (
+              <div className="col-span-full flex min-h-[240px] items-center justify-center rounded-3xl border border-dashed border-slate-300 bg-white">
+                <div className="h-12 w-12 animate-spin rounded-full border-t-4 border-[#C9A96E]" />
+              </div>
+            ) : (
+              filteredproducts.map((product) => (
+                <Card
+                  key={product._id}
+                  product={product}
+                  addToCart={addToCart}
+                />
+              ))
+            )
           ) : (
-            filteredproducts.map((product) => (
-              <Card
-                key={product._id}
-                product={product}
-                addToCart={addToCart}
-              />
-            ))
-          )
-        ) : (
-          <div className="col-span-full text-center text-lg text-gray-500">
-            No products available. You're offline.
-          </div>
-        )}
-      </div>
+            <div className="col-span-full rounded-3xl border border-slate-200 bg-white px-6 py-14 text-center text-base text-slate-500 sm:text-lg">
+              No products available. You're offline.
+            </div>
+          )}
+        </div>
+      </section>
 
-      {/* Floating Cart Icon */}
       <Box
         position="fixed"
-        bottom="25px"
-        right="25px"
+        bottom={{ base: "18px", md: "25px" }}
+        right={{ base: "18px", md: "25px" }}
         zIndex={9999}
       >
         <Button
@@ -208,26 +222,30 @@ const Product = () => {
 
             setViewCart(true);
           }}
-          borderRadius="full"
-          w="60px"
-          h="60px"
-          bg="blue.500"
-          color="white"
+          aria-label="Open cart"
+          borderRadius="9999px"
+          w={{ base: "54px", md: "60px" }}
+          h={{ base: "54px", md: "60px" }}
+          bg="#0A0A0B"
+          color="#C9A96E"
+          border="1px solid rgba(201,169,110,0.35)"
+          boxShadow="0 18px 45px rgba(10,10,11,0.28)"
           position="relative"
           _hover={{
-            bg: "blue.600",
+            bg: "#171717",
+            transform: "translateY(-2px)",
           }}
         >
-          <FaShoppingCart size={24} />
+          <FaShoppingCart size={22} color="currentColor" />
 
           {cartItems.length > 0 && (
             <Box
               position="absolute"
               top="-5px"
               right="-5px"
-              bg="red.500"
-              color="white"
-              borderRadius="full"
+              bg="#C9A96E"
+              color="#0A0A0B"
+              borderRadius="9999px"
               minW="22px"
               h="22px"
               display="flex"

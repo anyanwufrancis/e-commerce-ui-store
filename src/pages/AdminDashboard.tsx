@@ -5,8 +5,8 @@ import {
   DialogHeader, DialogBody, DialogFooter,
   DialogTitle, DialogDescription, Avatar, createToaster, Toaster,
   Fieldset, Field, FieldLabel, FieldErrorText, Switch,
-  DrawerRoot, DrawerBackdrop, DrawerPositioner, DrawerContent, DrawerHeader, DrawerBody, DrawerCloseTrigger,
-  useDisclosure,
+  DrawerRoot, DrawerBackdrop, DrawerPositioner, DrawerContent, DrawerBody, DrawerCloseTrigger,
+  useDisclosure, HStack, Separator, Textarea,
 } from "@chakra-ui/react";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
@@ -16,6 +16,8 @@ import {
   FiHome, FiBarChart2, FiPackage, FiUsers, FiShoppingCart, FiSettings,
   FiDollarSign, FiPackage as FiPackageIcon, FiImage, FiFileText, FiMenu,
   FiStar, FiTag, FiTrendingUp, FiBox, FiCheckCircle, FiXCircle, FiMail,
+  FiExternalLink, FiGlobe, FiInfo, FiShoppingBag, FiSun, FiMoon,
+  FiPhone, FiMapPin, FiClock,
 } from "react-icons/fi";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -80,6 +82,10 @@ interface Order {
 
 interface SettingsData {
   storeName: string;
+  storeDescription: string;
+  storeAddress: string;
+  storePhone: string;
+  workingHours: string;
   supportEmail: string;
   currency: string;
   shippingFee: number;
@@ -92,6 +98,10 @@ const EMPTY_PRODUCT = { name: "", description: "", price: "", image: "", countIn
 const EMPTY_CATEGORY = { name: "", description: "", image: "" };
 const EMPTY_SETTINGS: SettingsData = {
   storeName: "",
+  storeDescription: "",
+  storeAddress: "",
+  storePhone: "",
+  workingHours: "",
   supportEmail: "",
   currency: "NGN",
   shippingFee: 0,
@@ -134,6 +144,12 @@ const SETTINGS_ITEMS: NavItem[] = [
   { id: "settings", label: "Settings", icon: FiSettings },
 ];
 
+const STORE_LINKS = [
+  { label: "Visit Store",   path: "/",        icon: FiGlobe },
+  { label: "Products Page", path: "/product", icon: FiShoppingBag },
+  { label: "About Us",      path: "/about",   icon: FiInfo },
+];
+
 const SECTION_TITLES: Record<Section, string> = {
   dashboard: "Dashboard",
   analytics: "Analytics",
@@ -157,6 +173,25 @@ function getErrorMessage(err: unknown): string {
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { token, isAdmin, isLoggedIn, isLoading: authLoading, logout } = useAuth();
+  const [colorMode, setColorMode] = useState<"light" | "dark">(
+    () => (localStorage.getItem("chakra-ui-color-mode") as "light" | "dark") || "light"
+  );
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = colorMode;
+    const html = document.documentElement;
+    if (colorMode === "dark") {
+      html.classList.add("dark");
+      html.style.colorScheme = "dark";
+    } else {
+      html.classList.remove("dark");
+      html.style.colorScheme = "light";
+    }
+    localStorage.setItem("chakra-ui-color-mode", colorMode);
+  }, [colorMode]);
+
+  const toggleColorMode = () => setColorMode((prev) => (prev === "light" ? "dark" : "light"));
+
   const { open: sidebarOpen, onOpen: openSidebar, onClose: closeSidebar } = useDisclosure();
 
   const [activeSection, setActiveSection] = useState<Section>("dashboard");
@@ -330,7 +365,7 @@ export default function AdminDashboard() {
       };
 
       await API.post("/admin/products", payload);
-      showToast("Product added successfully!", "success");
+      showToast("Product added successfully!", "success", `${payload.name} has been added to your catalog.`);
       setProductForm(EMPTY_PRODUCT);
       await fetchData(true);
       success = true;
@@ -369,7 +404,7 @@ export default function AdminDashboard() {
       };
       const res = await API.post<{ success: boolean; category: Category }>("/admin/categories", payload);
       setCategories((prev) => [...prev, res.data.category].sort((a, b) => a.name.localeCompare(b.name)));
-      showToast("Category added successfully!", "success");
+      showToast("Category added successfully!", "success", `${payload.name} category has been created.`);
       setCategoryForm(EMPTY_CATEGORY);
       success = true;
     } catch (err) {
@@ -548,7 +583,7 @@ export default function AdminDashboard() {
       <Flex h="100vh" flexDir={{ base: "column", md: "row" }} bg={pageBg}>
         <Box
           display={{ base: "none", md: "block" }}
-          w={{ md: "260px" }}
+          w={{ md: "260px", lg: "280px" }}
           bg={cardBg}
           borderRight="1px solid"
           borderColor={borderColor}
@@ -568,15 +603,20 @@ export default function AdminDashboard() {
               </Box>
             ))}
           </VStack>
+          <Box mt={8}>
+            <Skeleton height="12px" width="80px" mb={2} rounded="sm" />
+            <Skeleton height="40px" rounded="md" mb={2} />
+            <Skeleton height="40px" rounded="md" />
+          </Box>
         </Box>
 
         <Box flex={1} overflowY="auto" p={{ base: 4, md: 6 }}>
-          <Flex mb={8} align="center" justify="space-between" flexWrap={{ base: "wrap", md: "nowrap" }} gap={{ base: 3, md: 4 }}>
-            <Box minW={{ base: "100%", md: "auto" }}>
+          <Flex mb={8} align="center" justify="space-between" flexWrap="wrap" gap={3}>
+            <Box w={{ base: "100%", md: "auto" }}>
               <Skeleton height="32px" width="180px" mb={2} rounded="md" />
               <Skeleton height="16px" width="220px" rounded="md" />
             </Box>
-            <Flex align="center" gap={4} flexWrap={{ base: "wrap", md: "nowrap" }} justify={{ base: "space-between", md: "flex-end" }} width={{ base: "100%", md: "auto" }}>
+            <Flex align="center" gap={4} flexWrap="wrap" justify="flex-end" w={{ base: "100%", md: "auto" }}>
               <Skeleton height="40px" width="40px" rounded="md" />
               <Skeleton height="20px" width="72px" rounded="md" />
               <Skeleton height="40px" width="40px" rounded="md" />
@@ -607,7 +647,7 @@ export default function AdminDashboard() {
   function NavGroup({ title, items }: { title: string; items: NavItem[] }) {
     return (
       <Box>
-        <Text fontSize="xs" fontWeight="bold" color="gray.500" mb={2}>{title}</Text>
+        <Text fontSize="xs" fontWeight="bold" color="gray.500" mb={2} letterSpacing="wider" textTransform="uppercase">{title}</Text>
         {items.map((item) => {
           const active = activeSection === item.id;
           return (
@@ -619,6 +659,10 @@ export default function AdminDashboard() {
               justifyContent="flex-start"
               mb={1}
               onClick={() => goTo(item.id)}
+              fontWeight={active ? "semibold" : "normal"}
+              _hover={{
+                bg: active ? undefined : { base: "gray.100", _dark: "gray.800" },
+              }}
             >
               <Box as={item.icon} mr={3} />
               {item.label}
@@ -632,13 +676,21 @@ export default function AdminDashboard() {
   // ── Products panel (shared between Dashboard overview + Products section) ─
   function ProductsPanel({ maxH }: { maxH?: string }) {
     return (
-      <Box bg={cardBg} p={6} rounded="2xl" border="1px solid" borderColor={borderColor} shadow="sm">
-        <Flex mb={5} align="center">
+      <Box bg={cardBg} p={6} rounded="2xl" border="1px solid" borderColor={borderColor} shadow="sm" _hover={{ shadow: "md" }} transition="box-shadow 0.2s">
+        <Flex mb={5} align="center" flexWrap="wrap" gap={3}>
           <Heading size="md">
-            Products <Badge ml={2} colorScheme="blue">{displayProductCount}</Badge>
+            Products <Badge ml={2} colorScheme="blue" variant="solid" rounded="full" px={2}>{displayProductCount}</Badge>
           </Heading>
           <Spacer />
-          <Button colorScheme="blue" onClick={() => setIsProductOpen(true)}>
+          <Button
+            colorScheme="blue"
+            bgGradient="linear(to-r, blue.500, blue.600)"
+            _hover={{ bgGradient: "linear(to-r, blue.600, blue.700)", shadow: "lg", transform: "translateY(-1px)" }}
+            _active={{ transform: "translateY(0)" }}
+            onClick={() => setIsProductOpen(true)}
+            shadow="md"
+            transition="all 0.2s"
+          >
             <Box as={FiPlus} mr={2} />
             Add Product
           </Button>
@@ -654,10 +706,11 @@ export default function AdminDashboard() {
                 p={4}
                 bg="gray.50" _dark={{ bg: "gray.800" }}
                 rounded="xl" align="center"
-                _hover={{ shadow: "md" }}
+                _hover={{ shadow: "md", bg: { base: "gray.100", _dark: "gray.700" } }}
+                transition="all 0.2s"
               >
-                <Box flex={1}>
-                  <Text fontWeight="semibold">{p.name}</Text>
+                <Box flex={1} minW={0}>
+                  <Text fontWeight="semibold" css={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</Text>
                   <Text fontSize="sm" color="gray.500">₦{Number(p.price).toLocaleString()}</Text>
                   <Text fontSize="xs" color="gray.400">Stock: {p.countInStock}</Text>
                 </Box>
@@ -667,6 +720,7 @@ export default function AdminDashboard() {
                   variant="ghost"
                   onClick={() => void handleDeleteProduct(p._id)}
                   loading={deletingProductId === p._id}
+                  aria-label="Delete product"
                 >
                   <Box as={FiTrash2} />
                 </IconButton>
@@ -681,10 +735,10 @@ export default function AdminDashboard() {
   // ── Users panel (shared between Dashboard overview + Users section) ───────
   function UsersPanel({ maxH }: { maxH?: string }) {
     return (
-      <Box bg={cardBg} p={6} rounded="2xl" border="1px solid" borderColor={borderColor} shadow="sm">
+      <Box bg={cardBg} p={6} rounded="2xl" border="1px solid" borderColor={borderColor} shadow="sm" _hover={{ shadow: "md" }} transition="box-shadow 0.2s">
         <Flex mb={5} align="center">
           <Heading size="md">
-            Users <Badge ml={2}>{displayUserCount}</Badge>
+            Users <Badge ml={2} variant="solid" colorScheme="gray" rounded="full" px={2}>{displayUserCount}</Badge>
           </Heading>
         </Flex>
 
@@ -697,22 +751,25 @@ export default function AdminDashboard() {
                 p={4}
                 bg="gray.50" _dark={{ bg: "gray.800" }}
                 rounded="xl" align="center" gap={4}
-                _hover={{ shadow: "md" }}
+                _hover={{ shadow: "md", bg: { base: "gray.100", _dark: "gray.700" } }}
+                transition="all 0.2s"
               >
                 <Avatar.Root size="md">
                   <Avatar.Fallback name={u.name} />
                 </Avatar.Root>
-                <Box flex={1}>
-                  <Flex align="center" gap={2}>
-                    <Text fontWeight="semibold">{u.name}</Text>
-                    {u.role === "admin" && <Badge colorScheme="purple">Admin</Badge>}
+                <Box flex={1} minW={0}>
+                  <Flex align="center" gap={2} flexWrap="wrap">
+                    <Text fontWeight="semibold" css={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</Text>
+                    {u.role === "admin" && <Badge colorScheme="purple" variant="solid" size="xs">Admin</Badge>}
                   </Flex>
-                  <Text fontSize="sm" color="gray.500">{u.email}</Text>
+                  <Text fontSize="sm" color="gray.500" css={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</Text>
                 </Box>
                 <Badge
                   colorScheme={isOnline ? "green" : "gray"}
                   variant="solid"
                   px={3}
+                  rounded="full"
+                  fontSize="xs"
                 >
                   {isOnline ? "Online" : "Offline"}
                 </Badge>
@@ -723,6 +780,7 @@ export default function AdminDashboard() {
                     variant="ghost"
                     onClick={() => void handleDeleteUser(u._id)}
                     loading={deletingUserId === u._id}
+                    aria-label="Delete user"
                   >
                     <Box as={FiTrash2} />
                   </IconButton>
@@ -738,13 +796,21 @@ export default function AdminDashboard() {
   // ── Categories panel ────────────────────────────────────────────────────
   function CategoriesPanel({ maxH }: { maxH?: string }) {
     return (
-      <Box bg={cardBg} p={6} rounded="2xl" border="1px solid" borderColor={borderColor} shadow="sm">
-        <Flex mb={5} align="center">
+      <Box bg={cardBg} p={6} rounded="2xl" border="1px solid" borderColor={borderColor} shadow="sm" _hover={{ shadow: "md" }} transition="box-shadow 0.2s">
+        <Flex mb={5} align="center" flexWrap="wrap" gap={3}>
           <Heading size="md">
-            Categories <Badge ml={2} colorScheme="blue">{categories.length}</Badge>
+            Categories <Badge ml={2} colorScheme="blue" variant="solid" rounded="full" px={2}>{categories.length}</Badge>
           </Heading>
           <Spacer />
-          <Button colorScheme="blue" onClick={() => setIsCategoryOpen(true)}>
+          <Button
+            colorScheme="blue"
+            bgGradient="linear(to-r, blue.500, blue.600)"
+            _hover={{ bgGradient: "linear(to-r, blue.600, blue.700)", shadow: "lg", transform: "translateY(-1px)" }}
+            _active={{ transform: "translateY(0)" }}
+            onClick={() => setIsCategoryOpen(true)}
+            shadow="md"
+            transition="all 0.2s"
+          >
             <Box as={FiPlus} mr={2} />
             Add Category
           </Button>
@@ -761,6 +827,7 @@ export default function AdminDashboard() {
                 bg="gray.50" _dark={{ bg: "gray.800" }}
                 rounded="xl" align="center"
                 _hover={{ shadow: "md" }}
+                transition="all 0.2s"
               >
                 <Box flex={1} minW={0}>
                   <Text fontWeight="semibold">{c.name}</Text>
@@ -777,6 +844,7 @@ export default function AdminDashboard() {
                   variant="ghost"
                   onClick={() => void handleDeleteCategory(c._id)}
                   loading={deletingCategoryId === c._id}
+                  aria-label="Delete category"
                 >
                   <Box as={FiTrash2} />
                 </IconButton>
@@ -791,10 +859,10 @@ export default function AdminDashboard() {
   // ── Reviews panel ────────────────────────────────────────────────────────
   function ReviewsPanel({ maxH }: { maxH?: string }) {
     return (
-      <Box bg={cardBg} p={6} rounded="2xl" border="1px solid" borderColor={borderColor} shadow="sm">
+      <Box bg={cardBg} p={6} rounded="2xl" border="1px solid" borderColor={borderColor} shadow="sm" _hover={{ shadow: "md" }} transition="box-shadow 0.2s">
         <Flex mb={5} align="center">
           <Heading size="md">
-            Reviews <Badge ml={2}>{reviews.length}</Badge>
+            Reviews <Badge ml={2} variant="solid" colorScheme="yellow" rounded="full" px={2}>{reviews.length}</Badge>
           </Heading>
         </Flex>
 
@@ -809,26 +877,27 @@ export default function AdminDashboard() {
                 bg="gray.50" _dark={{ bg: "gray.800" }}
                 rounded="xl"
                 _hover={{ shadow: "md" }}
+                transition="all 0.2s"
               >
-                <Flex align="center" justify="space-between" mb={2}>
+                <Flex align="center" justify="space-between" mb={2} flexWrap="wrap" gap={2}>
                   <Flex align="center" gap={2}>
-                    <Badge colorScheme="yellow">★ {r.rating}/5</Badge>
+                    <Badge colorScheme="yellow" variant="solid" px={2} rounded="full">★ {r.rating}/5</Badge>
                     <Text fontSize="sm" fontWeight="semibold">
                       {r.product?.name ?? "Deleted product"}
                     </Text>
                   </Flex>
-                  <Badge colorScheme={r.isApproved ? "green" : "gray"} variant="subtle">
+                  <Badge colorScheme={r.isApproved ? "green" : "gray"} variant="subtle" rounded="full" px={2}>
                     {r.isApproved ? "Approved" : "Hidden"}
                   </Badge>
                 </Flex>
 
                 {r.comment && (
-                  <Text fontSize="sm" color="gray.600" _dark={{ color: "gray.300" }} mb={2}>
+                  <Text fontSize="sm" color="gray.600" _dark={{ color: "gray.300" }} mb={2} fontStyle="italic">
                     "{r.comment}"
                   </Text>
                 )}
 
-                <Flex align="center" justify="space-between">
+                <Flex align="center" justify="space-between" flexWrap="wrap" gap={2}>
                   <Text fontSize="xs" color="gray.400">
                     {r.user?.name ?? "Unknown user"} · {new Date(r.createdAt).toLocaleDateString()}
                   </Text>
@@ -866,10 +935,10 @@ export default function AdminDashboard() {
   // ── Orders panel ─────────────────────────────────────────────────────────
   function OrdersPanel({ maxH }: { maxH?: string }) {
     return (
-      <Box bg={cardBg} p={6} rounded="2xl" border="1px solid" borderColor={borderColor} shadow="sm">
+      <Box bg={cardBg} p={6} rounded="2xl" border="1px solid" borderColor={borderColor} shadow="sm" _hover={{ shadow: "md" }} transition="box-shadow 0.2s">
         <Flex mb={5} align="center">
           <Heading size="md">
-            Orders <Badge ml={2}>{orders.length}</Badge>
+            Orders <Badge ml={2} variant="solid" colorScheme="orange" rounded="full" px={2}>{orders.length}</Badge>
           </Heading>
         </Flex>
 
@@ -884,13 +953,14 @@ export default function AdminDashboard() {
                 bg="gray.50" _dark={{ bg: "gray.800" }}
                 rounded="xl"
                 _hover={{ shadow: "md" }}
+                transition="all 0.2s"
               >
                 <Flex align="center" justify="space-between" mb={2} flexWrap="wrap" gap={2}>
-                  <Box>
-                    <Text fontWeight="semibold">{o.user?.name ?? "Unknown customer"}</Text>
+                  <Box minW={0}>
+                    <Text fontWeight="semibold" css={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.user?.name ?? "Unknown customer"}</Text>
                     <Text fontSize="xs" color="gray.400">{o.user?.email}</Text>
                   </Box>
-                  <Badge colorScheme={o.paymentStatus === "paid" ? "green" : "orange"} variant="subtle">
+                  <Badge colorScheme={o.paymentStatus === "paid" ? "green" : "orange"} variant="solid" rounded="full" px={2} fontSize="xs">
                     {o.paymentStatus}
                   </Badge>
                 </Flex>
@@ -910,6 +980,7 @@ export default function AdminDashboard() {
                       border: "1px solid rgba(160,174,192,0.4)",
                       fontSize: "13px",
                       background: "transparent",
+                      cursor: updatingOrderId === o._id ? "not-allowed" : "pointer",
                     }}
                   >
                     {ORDER_STATUSES.map((s) => (
@@ -947,16 +1018,65 @@ export default function AdminDashboard() {
     }
 
     return (
-      <Box bg={cardBg} p={6} rounded="2xl" border="1px solid" borderColor={borderColor} shadow="sm" maxW="640px">
+      <Box bg={cardBg} p={6} rounded="2xl" border="1px solid" borderColor={borderColor} shadow="sm" maxW="740px" w="full" mx="auto">
         <Heading size="md" mb={6}>Store Settings</Heading>
 
         <Stack gap={5}>
+          {/* ── Theme Toggle ──────────────────────────────────────────────── */}
+          <Flex
+            align="center"
+            justify="space-between"
+            p={4}
+            bg="gray.50"
+            _dark={{ bg: "gray.800" }}
+            rounded="xl"
+            border="1px solid"
+            borderColor={borderColor}
+          >
+            <Box>
+              <Flex align="center" gap={2}>
+                <Box as={colorMode === "dark" ? FiMoon : FiSun} color={colorMode === "dark" ? "yellow.400" : "orange.400"} />
+                <Text fontWeight="semibold" fontSize="sm">
+                  {colorMode === "dark" ? "Dark Mode" : "Light Mode"}
+                </Text>
+              </Flex>
+              <Text fontSize="xs" color="gray.500" mt={1}>
+                Toggle between light and dark theme
+              </Text>
+            </Box>
+            <Button
+              colorScheme={colorMode === "dark" ? "yellow" : "orange"}
+              variant="outline"
+              size="sm"
+              onClick={toggleColorMode}
+            >
+              <Box as={colorMode === "dark" ? FiSun : FiMoon} mr={2} />
+              Switch to {colorMode === "dark" ? "Light" : "Dark"}
+            </Button>
+          </Flex>
+
           <Field.Root>
             <FieldLabel>Store Name</FieldLabel>
             <Input
               value={settingsForm.storeName}
               onChange={(e) => setSettingsForm({ ...settingsForm, storeName: e.target.value })}
               size="lg"
+            />
+          </Field.Root>
+
+          <Field.Root>
+            <FieldLabel>
+              <Flex align="center" gap={2}>
+                <Box as={FiFileText} color="gray.500" />
+                Store Description
+              </Flex>
+            </FieldLabel>
+            <Textarea
+              value={settingsForm.storeDescription}
+              onChange={(e) => setSettingsForm({ ...settingsForm, storeDescription: e.target.value })}
+              size="lg"
+              placeholder="A short description of your store…"
+              rows={3}
             />
           </Field.Root>
 
@@ -972,6 +1092,53 @@ export default function AdminDashboard() {
               value={settingsForm.supportEmail}
               onChange={(e) => setSettingsForm({ ...settingsForm, supportEmail: e.target.value })}
               size="lg"
+            />
+          </Field.Root>
+
+          <Flex gap={4} direction={{ base: "column", sm: "row" }}>
+            <Field.Root flex={1}>
+              <FieldLabel>
+                <Flex align="center" gap={2}>
+                  <Box as={FiPhone} color="gray.500" />
+                  Phone Number
+                </Flex>
+              </FieldLabel>
+              <Input
+                type="tel"
+                value={settingsForm.storePhone}
+                onChange={(e) => setSettingsForm({ ...settingsForm, storePhone: e.target.value })}
+                size="lg"
+                placeholder="+234 800 000 0000"
+              />
+            </Field.Root>
+            <Field.Root flex={1}>
+              <FieldLabel>
+                <Flex align="center" gap={2}>
+                  <Box as={FiMapPin} color="gray.500" />
+                  Store Address
+                </Flex>
+              </FieldLabel>
+              <Input
+                value={settingsForm.storeAddress}
+                onChange={(e) => setSettingsForm({ ...settingsForm, storeAddress: e.target.value })}
+                size="lg"
+                placeholder="123 Main St, City"
+              />
+            </Field.Root>
+          </Flex>
+
+          <Field.Root>
+            <FieldLabel>
+              <Flex align="center" gap={2}>
+                <Box as={FiClock} color="gray.500" />
+                Working Hours
+              </Flex>
+            </FieldLabel>
+            <Input
+              value={settingsForm.workingHours}
+              onChange={(e) => setSettingsForm({ ...settingsForm, workingHours: e.target.value })}
+              size="lg"
+              placeholder="Mon–Fri: 9am–6pm, Sat: 10am–4pm"
             />
           </Field.Root>
 
@@ -1035,10 +1202,15 @@ export default function AdminDashboard() {
 
           <Button
             colorScheme="blue"
+            bgGradient="linear(to-r, blue.500, blue.600)"
+            _hover={{ bgGradient: "linear(to-r, blue.600, blue.700)", shadow: "lg", transform: "translateY(-1px)" }}
+            _active={{ transform: "translateY(0)" }}
             size="lg"
             alignSelf="flex-start"
             onClick={() => void handleSaveSettings()}
             disabled={savingSettings}
+            shadow="md"
+            transition="all 0.2s"
           >
             {savingSettings ? (
               <Flex align="center" gap={2}>
@@ -1068,10 +1240,10 @@ export default function AdminDashboard() {
             { label: "Avg. Price",      value: `₦${Math.round(analytics.avgPrice).toLocaleString()}`, sub: "Per product",                icon: FiTrendingUp, color: "purple.500" },
             { label: "Out of Stock",    value: analytics.outOfStockCount,                              sub: "Products at 0 stock",         icon: FiPackage,    color: "orange.500" },
           ].map((stat) => (
-            <Box key={stat.label} bg={cardBg} p={6} rounded="2xl" border="1px solid" borderColor={borderColor} shadow="sm">
+            <Box key={stat.label} bg={cardBg} p={6} rounded="2xl" border="1px solid" borderColor={borderColor} shadow="sm" _hover={{ shadow: "md" }} transition="box-shadow 0.2s">
               <Flex align="center" justify="space-between" mb={2}>
                 <Text fontSize="sm" color="gray.500">{stat.label}</Text>
-                <Box as={stat.icon} color={stat.color} />
+                <Box as={stat.icon} color={stat.color} boxSize={5} />
               </Flex>
               <Heading size="2xl" color={stat.color}>{stat.value}</Heading>
               <Text fontSize="xs" color="gray.400" mt={1}>{stat.sub}</Text>
@@ -1081,7 +1253,7 @@ export default function AdminDashboard() {
 
         <Grid templateColumns={{ base: "1fr", lg: "3fr 2fr" }} gap={6}>
           {/* Stock levels bar chart */}
-          <Box bg={cardBg} p={6} rounded="2xl" border="1px solid" borderColor={borderColor} shadow="sm">
+          <Box bg={cardBg} p={6} rounded="2xl" border="1px solid" borderColor={borderColor} shadow="sm" _hover={{ shadow: "md" }} transition="box-shadow 0.2s">
             <Heading size="md" mb={4}>Top Products by Stock</Heading>
             {analytics.topStock.length === 0 ? (
               <Center py={16} color="gray.400">No product data yet</Center>
@@ -1101,7 +1273,7 @@ export default function AdminDashboard() {
           </Box>
 
           {/* Online vs offline pie */}
-          <Box bg={cardBg} p={6} rounded="2xl" border="1px solid" borderColor={borderColor} shadow="sm">
+          <Box bg={cardBg} p={6} rounded="2xl" border="1px solid" borderColor={borderColor} shadow="sm" _hover={{ shadow: "md" }} transition="box-shadow 0.2s">
             <Heading size="md" mb={4}>User Activity</Heading>
             {users.length === 0 ? (
               <Center py={16} color="gray.400">No user data yet</Center>
@@ -1136,7 +1308,7 @@ export default function AdminDashboard() {
         </Grid>
 
         {/* Price distribution */}
-        <Box bg={cardBg} p={6} rounded="2xl" border="1px solid" borderColor={borderColor} shadow="sm">
+        <Box bg={cardBg} p={6} rounded="2xl" border="1px solid" borderColor={borderColor} shadow="sm" _hover={{ shadow: "md" }} transition="box-shadow 0.2s">
           <Heading size="md" mb={4}>Price Distribution</Heading>
           {products.length === 0 ? (
             <Center py={16} color="gray.400">No product data yet</Center>
@@ -1175,7 +1347,7 @@ export default function AdminDashboard() {
                 { label: "Online Now",  value: onlineCount,                  sub: "Active sessions", color: "green.500"  },
                 { label: "Offline",     value: users.length - onlineCount,   sub: "Inactive",        color: "orange.500" },
               ].map((stat, i) => (
-                <Box key={i} bg={cardBg} p={6} rounded="2xl" border="1px solid" borderColor={borderColor} shadow="sm">
+                <Box key={i} bg={cardBg} p={6} rounded="2xl" border="1px solid" borderColor={borderColor} shadow="sm" _hover={{ shadow: "md" }} transition="box-shadow 0.2s">
                   <Text fontSize="sm" color="gray.500">{stat.label}</Text>
                   <Heading size="3xl" color={stat.color} mt={2}>{stat.value}</Heading>
                   <Text fontSize="xs" color="gray.400" mt={1}>{stat.sub}</Text>
@@ -1220,13 +1392,17 @@ export default function AdminDashboard() {
     <Flex h="100vh" flexDir={{ base: "column", md: "row" }} bg={pageBg}>
       {/* ── Sidebar ──────────────────────────────────────────────────────── */}
       <Box
-        display={{ base: "none", md: "block" }}
-        w={{ md: "260px" }}
+        display={{ base: "none", md: "flex" }}
+        w={{ md: "260px", lg: "280px" }}
         bg={cardBg}
         borderRight="1px solid"
         borderColor={borderColor}
         p={4}
         overflowY="auto"
+        flexDir="column"
+        position="sticky"
+        top={0}
+        h="100vh"
       >
         <Flex align="center" gap={3} mb={8}>
           <Box
@@ -1235,54 +1411,92 @@ export default function AdminDashboard() {
             borderRadius="lg"
             display="flex" alignItems="center" justifyContent="center"
             fontWeight="bold" fontSize="xl"
+            shadow="md"
           >
             S
           </Box>
-          <Heading size="lg">StoreAdmin</Heading>
+          <Heading size="lg" fontSize={{ lg: "xl" }}>StoreAdmin</Heading>
         </Flex>
 
-        <VStack align="stretch" gap={6}>
+        <VStack align="stretch" gap={6} flex={1}>
           <NavGroup title="OVERVIEW" items={OVERVIEW_ITEMS} />
           <NavGroup title="CATALOG" items={CATALOG_ITEMS} />
           <NavGroup title="PEOPLE" items={PEOPLE_ITEMS} />
           <NavGroup title="SETTINGS" items={SETTINGS_ITEMS} />
+
+          {/* ── Store Links Section ─────────────────────────────────────── */}
+          <Box>
+            <Separator mb={4} />
+            <Text fontSize="xs" fontWeight="bold" color="gray.500" mb={2} letterSpacing="wider" textTransform="uppercase">
+              <Flex align="center" gap={1}>
+                <Box as={FiExternalLink} fontSize="12px" />
+                STORE LINKS
+              </Flex>
+            </Text>
+            {STORE_LINKS.map((link) => (
+              <Button
+                key={link.path}
+                variant="ghost"
+                colorScheme="gray"
+                w="full"
+                justifyContent="flex-start"
+                mb={1}
+                size="sm"
+                onClick={() => navigate(link.path)}
+                _hover={{ bg: { base: "gray.100", _dark: "gray.800" }, color: "blue.500" }}
+              >
+                <Box as={link.icon} mr={2} fontSize="14px" />
+                {link.label}
+              </Button>
+            ))}
+          </Box>
         </VStack>
       </Box>
 
       {/* ── Main Content ─────────────────────────────────────────────────── */}
-      <Box flex={1} overflowY="auto" p={{ base: 4, md: 6 }}>
+      <Box flex={1} overflowY="auto" p={{ base: 3, sm: 4, md: 6 }}>
         {/* Header */}
-        <Flex mb={8} align="center" justify="space-between" flexWrap={{ base: "wrap", md: "nowrap" }} gap={{ base: 3, md: 4 }}>
-          <Box minW={{ base: "100%", md: "auto" }}>
+        <Flex mb={6} align="center" justify="space-between" flexWrap="wrap" gap={3}>
+          <Box w={{ base: "100%", md: "auto" }}>
             <Heading size="lg">{SECTION_TITLES[activeSection]}</Heading>
             <Text fontSize="sm" color="gray.500">
               {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
             </Text>
           </Box>
 
-          <Flex align="center" gap={4} flexWrap={{ base: "wrap", md: "nowrap" }} justify={{ base: "space-between", md: "flex-end" }} width={{ base: "100%", md: "auto" }}>
+          <HStack gap={3} flexWrap="wrap" justify={{ base: "space-between", md: "flex-end" }} w={{ base: "100%", md: "auto" }}>
             <IconButton
               aria-label="Open menu"
               display={{ base: "inline-flex", md: "none" }}
               variant="ghost"
               onClick={openSidebar}
+              size="md"
             >
               <Box as={FiMenu} />
             </IconButton>
-            <Text fontVariantNumeric="tabular-nums" color="gray.500">{clock}</Text>
+            <IconButton
+              aria-label="Toggle color mode"
+              variant="ghost"
+              size="md"
+              onClick={toggleColorMode}
+            >
+              <Box as={colorMode === "dark" ? FiSun : FiMoon} />
+            </IconButton>
+            <Text fontVariantNumeric="tabular-nums" color="gray.500" fontSize="sm">{clock}</Text>
             <IconButton
               aria-label="Refresh"
               variant="ghost"
               onClick={() => void fetchData(true)}
               loading={refreshing}
+              size="md"
             >
               <FiRefreshCw />
             </IconButton>
-            <Button variant="outline" colorScheme="red" onClick={() => void logout()}>
+            <Button variant="outline" colorScheme="red" size="md" onClick={() => void logout()}>
               <Box as={FiLogOut} mr={2} />
               Log out
             </Button>
-          </Flex>
+          </HStack>
         </Flex>
 
         <SectionContent />
@@ -1293,14 +1507,81 @@ export default function AdminDashboard() {
         <DrawerBackdrop />
         <DrawerPositioner>
           <DrawerContent>
+            {/* ── Mobile Drawer Header with Close Button ────────────────── */}
+            <Flex align="center" justify="space-between" px={4} pt={4} pb={0}>
+              <Flex align="center" gap={3}>
+                <Box
+                  w="36px" h="36px"
+                  bg="blue.600" color="white"
+                  borderRadius="lg"
+                  display="flex" alignItems="center" justifyContent="center"
+                  fontWeight="bold"
+                >
+                  S
+                </Box>
+                <Heading size="md">StoreAdmin</Heading>
+              </Flex>
+              <IconButton
+                aria-label="Close menu"
+                variant="ghost"
+                colorScheme="red"
+                size="lg"
+                onClick={closeSidebar}
+              >
+                <Box as={FiXCircle} fontSize="24px" />
+              </IconButton>
+            </Flex>
             <DrawerCloseTrigger />
-            <DrawerHeader>StoreAdmin</DrawerHeader>
             <DrawerBody>
               <VStack align="stretch" gap={6} mt={4}>
                 <NavGroup title="OVERVIEW" items={OVERVIEW_ITEMS} />
                 <NavGroup title="CATALOG" items={CATALOG_ITEMS} />
                 <NavGroup title="PEOPLE" items={PEOPLE_ITEMS} />
                 <NavGroup title="SETTINGS" items={SETTINGS_ITEMS} />
+
+                {/* ── Mobile Store Links ────────────────────────────────── */}
+                <Box>
+                  <Separator mb={4} />
+                  <Text fontSize="xs" fontWeight="bold" color="gray.500" mb={2} letterSpacing="wider" textTransform="uppercase">
+                    <Flex align="center" gap={1}>
+                      <Box as={FiExternalLink} fontSize="12px" />
+                      STORE LINKS
+                    </Flex>
+                  </Text>
+                  {STORE_LINKS.map((link) => (
+                    <Button
+                      key={link.path}
+                      variant="ghost"
+                      colorScheme="gray"
+                      w="full"
+                      justifyContent="flex-start"
+                      mb={1}
+                      size="sm"
+                      onClick={() => { navigate(link.path); closeSidebar(); }}
+                      _hover={{ bg: { base: "gray.100", _dark: "gray.800" }, color: "blue.500" }}
+                    >
+                      <Box as={link.icon} mr={2} fontSize="14px" />
+                      {link.label}
+                    </Button>
+                  ))}
+                </Box>
+
+                {/* ── Mobile Theme Toggle ──────────────────────────────── */}
+                <Box>
+                  <Separator mb={4} />
+                  <Button
+                    variant="ghost"
+                    colorScheme="gray"
+                    w="full"
+                    justifyContent="flex-start"
+                    size="sm"
+                    onClick={toggleColorMode}
+                    _hover={{ bg: { base: "gray.100", _dark: "gray.800" }, color: "blue.500" }}
+                  >
+                    <Box as={colorMode === "dark" ? FiSun : FiMoon} mr={2} />
+                    Switch to {colorMode === "dark" ? "Light" : "Dark"} Mode
+                  </Button>
+                </Box>
               </VStack>
             </DrawerBody>
           </DrawerContent>
@@ -1317,8 +1598,8 @@ export default function AdminDashboard() {
               <Box
                 position="absolute"
                 inset="0"
-                bg="rgba(255,255,255,0.75)"
-                _dark={{ bg: "rgba(0,0,0,0.75)" }}
+                bg="rgba(255,255,255,0.85)"
+                _dark={{ bg: "rgba(0,0,0,0.85)" }}
                 backdropFilter="blur(6px)"
                 display="flex"
                 alignItems="center"
@@ -1442,21 +1723,27 @@ export default function AdminDashboard() {
                 </Stack>
               </Fieldset.Root>
             </DialogBody>
-            <DialogFooter gap={3} pt={4} borderTop="1px solid" borderColor={borderColor}>
+            <DialogFooter gap={3} pt={4} borderTop="1px solid" borderColor={borderColor} flexDir={{ base: "column-reverse", sm: "row" }}>
               <Button
                 variant="ghost"
                 onClick={() => setIsProductOpen(false)}
                 disabled={saving}
                 size="lg"
+                w={{ base: "full", sm: "auto" }}
               >
                 Cancel
               </Button>
               <Button
                 colorScheme="blue"
+                bgGradient="linear(to-r, blue.500, blue.600)"
+                _hover={{ bgGradient: "linear(to-r, blue.600, blue.700)", shadow: "lg" }}
                 size="lg"
                 px={6}
+                w={{ base: "full", sm: "auto" }}
                 onClick={() => void handleAddProduct()}
                 disabled={saving}
+                shadow="md"
+                transition="all 0.2s"
               >
                 {saving ? (
                   <Flex align="center" gap={2}>
@@ -1464,7 +1751,10 @@ export default function AdminDashboard() {
                     Saving…
                   </Flex>
                 ) : (
-                  "Save Product"
+                  <Flex align="center" gap={2}>
+                    <Box as={FiCheckCircle} />
+                    Save Product
+                  </Flex>
                 )}
               </Button>
             </DialogFooter>
@@ -1481,8 +1771,8 @@ export default function AdminDashboard() {
               <Box
                 position="absolute"
                 inset="0"
-                bg="rgba(255,255,255,0.75)"
-                _dark={{ bg: "rgba(0,0,0,0.75)" }}
+                bg="rgba(255,255,255,0.85)"
+                _dark={{ bg: "rgba(0,0,0,0.85)" }}
                 backdropFilter="blur(6px)"
                 display="flex"
                 alignItems="center"
@@ -1561,16 +1851,21 @@ export default function AdminDashboard() {
                 </Stack>
               </Fieldset.Root>
             </DialogBody>
-            <DialogFooter gap={3} pt={4} borderTop="1px solid" borderColor={borderColor}>
-              <Button variant="ghost" onClick={() => setIsCategoryOpen(false)} disabled={savingCategory} size="lg">
+            <DialogFooter gap={3} pt={4} borderTop="1px solid" borderColor={borderColor} flexDir={{ base: "column-reverse", sm: "row" }}>
+              <Button variant="ghost" onClick={() => setIsCategoryOpen(false)} disabled={savingCategory} size="lg" w={{ base: "full", sm: "auto" }}>
                 Cancel
               </Button>
               <Button
                 colorScheme="blue"
+                bgGradient="linear(to-r, blue.500, blue.600)"
+                _hover={{ bgGradient: "linear(to-r, blue.600, blue.700)", shadow: "lg" }}
                 size="lg"
                 px={6}
+                w={{ base: "full", sm: "auto" }}
                 onClick={() => void handleAddCategory()}
                 disabled={savingCategory}
+                shadow="md"
+                transition="all 0.2s"
               >
                 {savingCategory ? (
                   <Flex align="center" gap={2}>
@@ -1578,7 +1873,10 @@ export default function AdminDashboard() {
                     Saving…
                   </Flex>
                 ) : (
-                  "Save Category"
+                  <Flex align="center" gap={2}>
+                    <Box as={FiCheckCircle} />
+                    Save Category
+                  </Flex>
                 )}
               </Button>
             </DialogFooter>

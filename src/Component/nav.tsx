@@ -57,9 +57,11 @@ export default function Navbar() {
       >
         <Flex h="80px" px={{ base: 5, lg: 12 }} align="center" justify="space-between">
           <Link to="/">
-            <Text fontSize="30px" fontWeight="300" color={TEXT_MAIN} fontFamily="'Cormorant Garamond', serif">
-              Luxe<Box as="span" color={GOLD}>Hub</Box>
-            </Text>
+            <img
+              src="/luxehub%20logo.png"
+              alt="LuxeHub"
+              style={{ height: "36px", width: "auto", objectFit: "contain" }}
+            />
           </Link>
 
           <HStack gap={10} display={{ base: "none", lg: "flex" }}>
@@ -196,7 +198,7 @@ export default function Navbar() {
     </Box>
   </Box>
 
-  {isAdmin && (
+  {/* {isAdmin && (
     <Link to="/AdminDashboard">
       <Button
         display={{ base: "none", lg: "flex" }}
@@ -212,7 +214,7 @@ export default function Navbar() {
         Admin
       </Button>
     </Link>
-  )}
+  )} */}
 
 </HStack>
 

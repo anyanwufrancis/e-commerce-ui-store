@@ -7,6 +7,7 @@ import AuthPage       from "./pages/auth";
 import Products       from "./Component/Product";
 import Cart           from "./Component/Cart";
 import About          from "./pages/About";
+import Categories     from "./pages/Categories";
 import Checkout       from "./pages/checkout";
 import AdminDashboard from "./pages/AdminDashboard";
 import Users          from "./pages/Users";
@@ -33,8 +34,9 @@ function App() {
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
         <Route path="/"         element={<Layout><Homepage /></Layout>} />
-        <Route path="/about"    element={<Layout><About /></Layout>} />
-        <Route path="/Product"  element={<Layout><Products /></Layout>} />
+        <Route path="/about"      element={<Layout><About /></Layout>} />
+        <Route path="/categories" element={<Layout><Categories /></Layout>} />
+        <Route path="/Product"    element={<Layout><Products /></Layout>} />
         <Route path="/auth"     element={<AuthPage />} />
 
         <Route path="/checkout" element={<ProtectedRoute><Layout><Checkout /></Layout></ProtectedRoute>} />
